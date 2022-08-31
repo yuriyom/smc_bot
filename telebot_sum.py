@@ -1,7 +1,7 @@
 import datetime
 from pdf2image import convert_from_bytes
 import telebot
-from key import token
+from key import token, link
 import requests
 import gspread
 
@@ -72,7 +72,7 @@ def get_texts():
 
 def download_as_png():
     response = requests.get(
-        "https://docs.google.com/spreadsheets/d/13tAsq4BnEaHUZON-sZlecFAVeo62kFE61zx75C7TOl4/export?format=pdf")
+        link)
     image = convert_from_bytes(response.content)[0].crop((100, 100, 1630, 1000))
     return (image)
 
