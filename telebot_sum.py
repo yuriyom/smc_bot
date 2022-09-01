@@ -6,26 +6,27 @@ import requests
 import gspread
 
 
+
 def creds():
     sa = gspread.service_account(filename="service-account-google.json")
     sh = sa.open("Статистика проведенных мероприятий new")
-    wks = sh.worksheet("Общая статистика v2")
+    wks = sh.worksheet("!Для чат-бота")
     return (wks)
 
 
-def sheets_update():
-    wks = creds()
-    global date_start_init, date_end_init
-    date_start_init = wks.acell("D6").value
-    date_end_init = wks.acell("D7").value
-
-    date_end = datetime.date.today() - datetime.timedelta(days=1)
-    date_start = (date_end - datetime.timedelta(days=15))
-    # delta_days = 14
-    # date_start = date_end - delta_days*24*60*60
-    wks.update("D6", date_start.strftime("%d.%m.%Y"), raw=False)
-    wks.update("D7", date_end.strftime("%d.%m.%Y"), raw=False)
-    wks.update("E10", "дням", raw=False)
+# def sheets_update():
+#     wks = creds()
+#     global date_start_init, date_end_init
+#     date_start_init = wks.acell("D6").value
+#     date_end_init = wks.acell("D7").value
+#
+#     date_end = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d.%m.%Y")
+#     date_start = (date_end - datetime.timedelta(days=15)).strftime("%d.%m.%Y")
+#     # delta_days = 14
+#     # date_start = date_end - delta_days*24*60*60
+#     wks.update("D6", date_start, raw=False)
+#     wks.update("D7", date_end, raw=False)
+#     wks.update("E10", "дням", raw=False)
 
 
 def sheets_set(date_start, date_end):
@@ -33,6 +34,7 @@ def sheets_set(date_start, date_end):
     global date_start_init, date_end_init
     date_start_init = wks.acell("D6").value
     date_end_init = wks.acell("D7").value
+
     wks.update("D6", date_start, raw=False)
     wks.update("D7", date_end, raw=False)
     wks.update("E10", "дням", raw=False)
@@ -73,7 +75,7 @@ def get_texts():
 def download_as_png():
     response = requests.get(
         link)
-    image = convert_from_bytes(response.content)[0].crop((100, 100, 1630, 1000))
+    image = convert_from_bytes(response.content)[1].crop((100, 100, 1630, 1000))
     return (image)
 
 
@@ -82,7 +84,12 @@ def send_photo(mode, message):
         global start_inp, end_inp
         sheets_set(start_inp, end_inp)
     elif mode == "current":
-        sheets_update()
+        end_cur = (datetime.date.today() - datetime.timedelta(days=1))
+        start_cur = (end_cur - datetime.timedelta(days=15))
+        end_cur = end_cur.strftime("%d.%m.%Y")
+        start_cur = start_cur.strftime("%d.%m.%Y")
+        sheets_set(start_cur, end_cur)
+        # sheets_update()
         # import datetime
         # date_end = (datetime.date.today() - datetime.timedelta(days=1))
         # date_start = ((date_end - datetime.timedelta(days=15))).strftime("%d.%m.%Y")
@@ -112,7 +119,7 @@ def first(message):
 
 def start_date(message):
     global start_inp, mode
-    mode = "custom"
+
     start_inp = message.text
     bot.send_message(message.chat.id, "Теперь введите дату окончания периода в формате: дд.мм.гггг")
     bot.register_next_step_handler(message, end_date)
@@ -122,16 +129,21 @@ def end_date(message):
     global end_inp
     end_inp = message.text
     bot.send_message(message.chat.id, "Уже готовлю отчет. Подождите минуточку!")
-    send_photo(mode, message)
-    sheets_set(date_start_init, date_end_init)
+    try:
+        send_photo(mode = "custom", message = message)
+        sheets_set(date_start_init, date_end_init)
+    except:
+        bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
 
 
 @bot.message_handler(commands=['report_current'])
 def ready(message):
     bot.send_message(message.chat.id, "Привет! Готовлю отчет об использовани СУМ за последние 14 дней")
-    mode = "current"
-    send_photo(mode, message)
-    sheets_set(date_start_init, date_end_init)
+    try:
+        send_photo(mode = "current", message = message)
+        sheets_set(date_start_init, date_end_init)
+    except:
+        bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
 
 
 bot.polling(none_stop=True)
