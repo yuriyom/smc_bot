@@ -6,27 +6,13 @@ import requests
 import gspread
 
 
+bot = telebot.TeleBot(token)
 
 def creds():
     sa = gspread.service_account(filename="service-account-google.json")
     sh = sa.open("Статистика проведенных мероприятий new")
     wks = sh.worksheet("!Для чат-бота")
     return (wks)
-
-
-# def sheets_update():
-#     wks = creds()
-#     global date_start_init, date_end_init
-#     date_start_init = wks.acell("D6").value
-#     date_end_init = wks.acell("D7").value
-#
-#     date_end = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%d.%m.%Y")
-#     date_start = (date_end - datetime.timedelta(days=15)).strftime("%d.%m.%Y")
-#     # delta_days = 14
-#     # date_start = date_end - delta_days*24*60*60
-#     wks.update("D6", date_start, raw=False)
-#     wks.update("D7", date_end, raw=False)
-#     wks.update("E10", "дням", raw=False)
 
 
 def sheets_set(date_start, date_end):
@@ -38,7 +24,6 @@ def sheets_set(date_start, date_end):
     wks.update("D6", date_start, raw=False)
     wks.update("D7", date_end, raw=False)
     wks.update("E10", "дням", raw=False)
-
 
 def get_texts():
     wks = creds()
@@ -67,10 +52,9 @@ def get_texts():
     text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(
         v_sc) + " мероприятий, из них в СУМ — " + str(
         v_sum) + " (" + v_sum_all_procent + ") " + tag_1 + "\n\nИз " + str(
-        v_sum) + " мероприятий, проведенных в СУМ, " + str(
+        v_sum) + " мероприятий в СУМ " + str(
         v_sum_zamech) + " были с замечаниями (" + v_sum_zamech_procent + ") " + tag_2 + "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent)
     return (text)
-
 
 def download_as_png():
     response = requests.get(
@@ -78,30 +62,26 @@ def download_as_png():
     image = convert_from_bytes(response.content)[1].crop((100, 100, 1630, 1000))
     return (image)
 
-
-def send_photo(mode, message):
+def send_photo(mode, chatid):
     if mode == "custom":
         global start_inp, end_inp
         sheets_set(start_inp, end_inp)
-    elif mode == "current":
-        end_cur = (datetime.date.today() - datetime.timedelta(days=1))
+    elif mode == "current_14":
+        end_cur = (datetime.date.today())
         start_cur = (end_cur - datetime.timedelta(days=15))
         end_cur = end_cur.strftime("%d.%m.%Y")
         start_cur = start_cur.strftime("%d.%m.%Y")
         sheets_set(start_cur, end_cur)
-        # sheets_update()
-        # import datetime
-        # date_end = (datetime.date.today() - datetime.timedelta(days=1))
-        # date_start = ((date_end - datetime.timedelta(days=15))).strftime("%d.%m.%Y")
-        # sheets_set(date_start,date_end).strftime("%d.%m.%Y")
-
-    # bot.send_photo(message.chat.id, photo=open("/Users/yuriy/Downloads/SUM/SUM_crop.png", "rb"))
+    elif mode == "current_30":
+        end_cur = (datetime.date.today())
+        start_cur = (end_cur - datetime.timedelta(days=30))
+        end_cur = end_cur.strftime("%d.%m.%Y")
+        start_cur = start_cur.strftime("%d.%m.%Y")
+        sheets_set(start_cur, end_cur)
     img = download_as_png()
     text = get_texts()
-    bot.send_photo(message.chat.id, photo=img, caption=text)
+    bot.send_photo(chat_id = chatid, photo=img, caption=text)
 
-
-bot = telebot.TeleBot(token)
 
 
 @bot.message_handler(commands=['start'])
@@ -113,8 +93,9 @@ def start(message):
 @bot.message_handler(commands=['report_custom'])
 def first(message):
     bot.send_message(message.chat.id,
-                     "Привет! Я могу подготовить отчет об использовании СУМ.\n\nДля начала введите дату начала периода в формате: дд.мм.гггг")
+                     "Введите дату начала периода в формате: дд.мм.гггг")
     bot.register_next_step_handler(message, start_date)
+
 
 
 def start_date(message):
@@ -130,17 +111,26 @@ def end_date(message):
     end_inp = message.text
     bot.send_message(message.chat.id, "Уже готовлю отчет. Подождите минуточку!")
     try:
-        send_photo(mode = "custom", message = message)
+        send_photo(mode = "custom", chatid = message.chat.id)
         sheets_set(date_start_init, date_end_init)
     except:
         bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
 
 
-@bot.message_handler(commands=['report_current'])
+@bot.message_handler(commands=['report_2_weeks'])
 def ready(message):
-    bot.send_message(message.chat.id, "Привет! Готовлю отчет об использовани СУМ за последние 14 дней")
+    bot.send_message(message.chat.id, "Готовлю отчет об использовани СУМ за последние 14 дней ⏱")
     try:
-        send_photo(mode = "current", message = message)
+        send_photo(mode = "current_14", chatid = message.chat.id)
+        sheets_set(date_start_init, date_end_init)
+    except:
+        bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
+
+@bot.message_handler(commands=['report_month'])
+def ready(message):
+    bot.send_message(message.chat.id, "Готовлю отчет об использовани СУМ за последний месяц ⏱")
+    try:
+        send_photo(mode = "current_30", chatid = message.chat.id)
         sheets_set(date_start_init, date_end_init)
     except:
         bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
