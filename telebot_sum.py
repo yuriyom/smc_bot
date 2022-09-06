@@ -114,6 +114,10 @@ def end_date(message):
         send_photo(mode = "custom", chatid = message.chat.id)
         sheets_set(date_start_init, date_end_init)
     except:
+        try:
+            sheets_set(date_start_init, date_end_init)
+        except:
+            pass
         bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
 
 
@@ -124,6 +128,10 @@ def ready(message):
         send_photo(mode = "current_14", chatid = message.chat.id)
         sheets_set(date_start_init, date_end_init)
     except:
+        try:
+            sheets_set(date_start_init, date_end_init)
+        except:
+            pass
         bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
 
 @bot.message_handler(commands=['report_month'])
@@ -133,6 +141,10 @@ def ready(message):
         send_photo(mode = "current_30", chatid = message.chat.id)
         sheets_set(date_start_init, date_end_init)
     except:
+        try:
+            sheets_set(date_start_init, date_end_init)
+        except:
+            pass
         bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
 
 
