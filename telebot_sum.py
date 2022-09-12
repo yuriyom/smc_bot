@@ -93,27 +93,21 @@ def start(message):
 @bot.message_handler(commands=['report_custom'])
 def first(message):
     bot.send_message(message.chat.id,
-                     "Введите дату начала периода в формате: дд.мм.гггг")
-    bot.register_next_step_handler(message, start_date)
+                     "Введите дату начала и конца периода через запятую в формате:\n_дд.мм.гггг, дд.мм.гггг_", parse_mode='Markdown')
+    bot.register_next_step_handler(message, report_custom)
 
 
-
-def start_date(message):
-    global start_inp, mode
-
-    start_inp = message.text
-    bot.send_message(message.chat.id, "Теперь введите дату окончания периода в формате: дд.мм.гггг")
-    bot.register_next_step_handler(message, end_date)
-
-
-def end_date(message):
-    global end_inp
-    end_inp = message.text
+def report_custom(message):
     bot.send_message(message.chat.id, "Уже готовлю отчет. Подождите минуточку!")
     try:
+        global start_inp, end_inp
+        date_inp = message.text.split(',')
+        start_inp = date_inp[0]
+        end_inp = date_inp[1]
         send_photo(mode = "custom", chatid = message.chat.id)
         sheets_set(date_start_init, date_end_init)
-    except:
+    except Exception as e:
+        print(e)
         try:
             sheets_set(date_start_init, date_end_init)
         except:
@@ -122,7 +116,7 @@ def end_date(message):
 
 
 @bot.message_handler(commands=['report_2_weeks'])
-def ready(message):
+def report_2_weeks(message):
     bot.send_message(message.chat.id, "Готовлю отчет об использовани СУМ за последние 14 дней ⏱")
     try:
         send_photo(mode = "current_14", chatid = message.chat.id)
@@ -135,7 +129,7 @@ def ready(message):
         bot.send_message(message.chat.id, "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
 
 @bot.message_handler(commands=['report_month'])
-def ready(message):
+def report_month(message):
     bot.send_message(message.chat.id, "Готовлю отчет об использовани СУМ за последний месяц ⏱")
     try:
         send_photo(mode = "current_30", chatid = message.chat.id)
