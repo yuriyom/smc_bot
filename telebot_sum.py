@@ -31,29 +31,31 @@ def get_texts():
     date_end = wks.acell("D7").value
     v_sc = int(wks.acell("H7").value)
     v_sum = int(wks.acell("I7").value)
-    v_sum_zamech = int(wks.acell("J7").value)
+    try:
+        v_sum_zamech = int(wks.acell("J7").value)
+        if v_sc / v_sum < 0.3:
+            tag_1 = "🔴"
+        elif v_sc / v_sum < 0.6:
+            tag_1 = "🟠"
+        else:
+            tag_1 = "🟢"
 
-    if v_sc / v_sum < 0.3:
-        tag_1 = "🔴"
-    elif v_sc / v_sum < 0.6:
-        tag_1 = "🟠"
-    else:
-        tag_1 = "🟢"
-
-    if v_sc / v_sum > 0.5:
-        tag_2 = "🔴"
-    elif v_sc / v_sum > 0.2:
-        tag_2 = "🟠"
-    else:
-        tag_2 = "🟢"
-    v_sum_all_procent = f"{v_sum / v_sc:.0%}"
-    v_sum_zamech_procent = f"{v_sum_zamech / v_sum:.0%}"
-    v_sum_success_procent = f"{(v_sum - v_sum_zamech) / v_sc:.0%}"
-    text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(
-        v_sc) + " мероприятий, из них в СУМ — " + str(
-        v_sum) + " (" + v_sum_all_procent + ") " + tag_1 + "\n\nИз " + str(
-        v_sum) + " мероприятий в СУМ " + str(
-        v_sum_zamech) + " были с замечаниями (" + v_sum_zamech_procent + ") " + tag_2 + "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent)
+        if v_sc / v_sum > 0.5:
+            tag_2 = "🔴"
+        elif v_sc / v_sum > 0.2:
+            tag_2 = "🟠"
+        else:
+            tag_2 = "🟢"
+        v_sum_all_procent = f"{v_sum / v_sc:.0%}"
+        v_sum_zamech_procent = f"{v_sum_zamech / v_sum:.0%}"
+        v_sum_success_procent = f"{(v_sum - v_sum_zamech) / v_sc:.0%}"
+        text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(
+            v_sc) + " мероприятий, из них в СУМ — " + str(
+            v_sum) + " (" + v_sum_all_procent + ") " + tag_1 + "\n\nИз " + str(
+            v_sum) + " мероприятий в СУМ " + str(
+            v_sum_zamech) + " были с замечаниями (" + v_sum_zamech_procent + ") " + tag_2 + "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent)
+    except:
+        text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(v_sc) + " мероприятий, из них в СУМ — " + "0 🔴")
     return (text)
 
 def download_as_png():
@@ -106,8 +108,7 @@ def report_custom(message):
         end_inp = date_inp[1]
         send_photo(mode = "custom", chatid = message.chat.id)
         sheets_set(date_start_init, date_end_init)
-    except Exception as e:
-        print(e)
+    except:
         try:
             sheets_set(date_start_init, date_end_init)
         except:
