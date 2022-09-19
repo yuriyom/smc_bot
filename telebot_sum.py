@@ -83,7 +83,7 @@ def take_photo(mode):
         sheets_set(start_inp, end_inp)
     elif mode == "current_14":
         end_cur = (datetime.date.today())
-        start_cur = (end_cur - datetime.timedelta(days=15))
+        start_cur = (end_cur - datetime.timedelta(days=14))
         end_cur = end_cur.strftime("%d.%m.%Y")
         start_cur = start_cur.strftime("%d.%m.%Y")
         sheets_set(start_cur, end_cur)
@@ -110,12 +110,10 @@ chats = []
 def auto_report(update, context):
     global b, chats
     command = context.args[0].lower()
-    print(command)
     if("on" == command):
         b = True
         chats.append(update.effective_chat.id)
-        print("on")
-        update.message.reply_text("Теперь отчет будет отправляться каждый поредельник в 13:00")
+        update.message.reply_text("Теперь отчет будет отправляться каждый понедельник в 13:00")
     elif("off" == command):
         b = False
         update.message.reply_text("Теперь авто-отчёт отправляться не будет")
@@ -128,9 +126,7 @@ j = updater.job_queue
 
 def planned(context: CallbackContext):
     global b, chats
-    print('lll')
     print(chats)
-
     img1, text1 = take_photo("current_14")
     img2, text2 = take_photo("nakop")
     bio1 = BytesIO()
@@ -146,8 +142,8 @@ def planned(context: CallbackContext):
         context.bot.send_photo(chat_id=id, photo=bio1, caption=text1)
         context.bot.send_photo(chat_id=id, photo=bio2, caption=text2)
     sheets_set(date_start_init, date_end_init)
-# job_daily = j.run_daily(planned, days=(0,1,6), time=datetime.time(hour=8, minute=47, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
-job_daily = j.run_repeating(planned, 30)
+job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=00, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+# job_daily = j.run_repeating(planned, 30)
 
 
 def start(update, context):
