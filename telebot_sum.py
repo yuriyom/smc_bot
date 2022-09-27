@@ -1,4 +1,5 @@
 import datetime
+import time
 from pdf2image import convert_from_bytes
 from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters
 import logging
@@ -6,19 +7,13 @@ from key import token, link
 import pytz
 import requests
 import gspread
+import re
+from dateutil.relativedelta import *
 from io import BytesIO
 
 
 updater = Updater(token=token, use_context=True)
 dispatcher = updater.dispatcher
-
-def start(update, context):
-    message = 'Привет!'
-    context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-    print(update.effective_chat.id)
-start_handler = CommandHandler('start', start)
-dispatcher.add_handler(start_handler)
-
 
 
 def creds():
@@ -28,7 +23,8 @@ def creds():
     return (wks)
 
 
-def sheets_set(date_start, date_end, granularity = "дням"):
+def sheets_set(date_start, date_end, granularity = ""):
+    print(date_start,date_end)
     wks = creds()
     global date_start_init, date_end_init
     date_start_init = wks.acell("D6").value
@@ -36,7 +32,18 @@ def sheets_set(date_start, date_end, granularity = "дням"):
 
     wks.update("D6", date_start, raw=False)
     wks.update("D7", date_end, raw=False)
-    wks.update("E10", granularity, raw=False)
+    days = (datetime.datetime.strptime(date_end, "%d.%m.%Y").date()-datetime.datetime.strptime(date_start, "%d.%m.%Y").date()).days
+    print(days)
+    #установка гранулярности (дни/недели)
+    if granularity == "":
+        #если в начале функции гранулярность не задана, то преиод более 25 дней будет отражаться по неделям, а менее — по дням
+        if days>25:
+            print()
+            wks.update("E10", "неделям", raw=False)
+        else:
+            wks.update("E10", "дням", raw=False)
+    #если гранулярность задана в функции, до будет использоваться заданное значение
+    else: wks.update("E10", granularity, raw=False)
 
 def get_texts():
     wks = creds()
@@ -89,7 +96,9 @@ def take_photo(mode):
         sheets_set(start_cur, end_cur)
     elif mode == "current_30":
         end_cur = (datetime.date.today())
-        start_cur = (end_cur - datetime.timedelta(days=30))
+        # start_cur = (end_cur - datetime.timedelta(days=30))
+        print(end_cur.day)
+        start_cur = end_cur+relativedelta(months=-1)
         end_cur = end_cur.strftime("%d.%m.%Y")
         start_cur = start_cur.strftime("%d.%m.%Y")
         sheets_set(start_cur, end_cur)
@@ -98,12 +107,15 @@ def take_photo(mode):
         start_cur = datetime.date(2022,8,1)
         end_cur = end_cur.strftime("%d.%m.%Y")
         start_cur = start_cur.strftime("%d.%m.%Y")
-        sheets_set(start_cur, end_cur, "неделям")
+        sheets_set(start_cur, end_cur)
     img = download_as_png()
+    bio = BytesIO()
+    bio.name = 'image.png'
+    img.save(bio, 'png')
+    bio.seek(0)
+    img = bio.getvalue()
     text = get_texts()
     return img, text
-    # bot.send_photo(chat_id = chatid, photo=img, caption=text)
-
 
 b = False
 chats = []
@@ -113,7 +125,8 @@ def auto_report(update, context):
     if("on" == command):
         b = True
         chats.append(update.effective_chat.id)
-        update.message.reply_text("Теперь отчет будет отправляться каждый понедельник в 13:00")
+        update.message.reply_text("Проверочный отчет будет отправлен в среду в 13:00 ✅")
+        # update.message.reply_text("Теперь отчет будет автоматически отправляться каждый понедельник в 13:00 ✅")
     elif("off" == command):
         b = False
         update.message.reply_text("Теперь авто-отчёт отправляться не будет")
@@ -129,39 +142,33 @@ def planned(context: CallbackContext):
     print(chats)
     img1, text1 = take_photo("current_14")
     img2, text2 = take_photo("nakop")
-    bio1 = BytesIO()
-    bio1.name = 'image1.png'
-    img1.save(bio1, 'png')
-    bio1.seek(0)
-    bio2 = BytesIO()
-    bio2.name = 'image2.png'
-    img2.save(bio2, 'png')
-    bio2.seek(0)
-    print('lll2')
     for id in chats:
-        context.bot.send_photo(chat_id=id, photo=bio1, caption=text1)
-        context.bot.send_photo(chat_id=id, photo=bio2, caption=text2)
+        context.bot.send_photo(chat_id=id, photo=img1, caption=text1)
+        context.bot.send_photo(chat_id=id, photo=img2, caption=text2)
     sheets_set(date_start_init, date_end_init)
-job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=00, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+job_daily = j.run_daily(planned, days=[2], time=datetime.time(hour=12, minute=59, second=45, tzinfo=pytz.timezone("Europe/Moscow")))
 # job_daily = j.run_repeating(planned, 30)
 
 
 def start(update, context):
     message = 'Привет!'
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-    print(update.effective_chat.id)
+    print(update.effective_chat)
 start_handler = CommandHandler('start', start)
 dispatcher.add_handler(start_handler)
+
+def sub_id_list(update, context):
+    if not chats: message = "Пока никто не подписался на рассылку"
+    else: message = ",".join(map(str,chats))
+    context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+dispatcher.add_handler(CommandHandler('sub_id_list', sub_id_list))
+
 
 def report_2_weeks(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text = "Готовлю отчет об использовани СУМ за последние 14 дней ⏱")
     try:
         img, text = take_photo("current_14")
-        bio = BytesIO()
-        bio.name = 'image.png'
-        img.save(bio, 'png')
-        bio.seek(0)
-        context.bot.send_photo(chat_id=update.effective_chat.id, photo=bio, caption=text)
+        context.bot.send_photo(chat_id=update.effective_chat.id, photo=img, caption=text)
         sheets_set(date_start_init, date_end_init)
     except:
         try:
@@ -169,29 +176,22 @@ def report_2_weeks(update, context):
         except:
             pass
         context.bot.send_message(chat_id = update.effective_chat.id, text = "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
-
-report_2_weeks_handler = CommandHandler('report_2_weeks', report_2_weeks)
-dispatcher.add_handler(report_2_weeks_handler)
+dispatcher.add_handler(CommandHandler('report_2_weeks', report_2_weeks))
 
 def report_month(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text = "Готовлю отчет об использовани СУМ за последний месяц ⏱")
     try:
         img, text = take_photo("current_30")
-        bio = BytesIO()
-        bio.name = 'image.png'
-        img.save(bio, 'png')
-        bio.seek(0)
-        context.bot.send_photo(chat_id=update.effective_chat.id, photo=bio, caption=text)
+        context.bot.send_photo(chat_id=update.effective_chat.id, photo=img, caption=text)
         sheets_set(date_start_init, date_end_init)
-    except:
+    except Exception as e:
+        print(e)
         try:
             sheets_set(date_start_init, date_end_init)
         except:
             pass
         context.bot.send_message(chat_id = update.effective_chat.id, text = "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
-
-report_month_handler = CommandHandler('report_month', report_month)
-dispatcher.add_handler(report_month_handler)
+dispatcher.add_handler(CommandHandler('report_month', report_month))
 
 def report_custom(update, context):
     context.bot.send_message(update.effective_chat.id,
@@ -202,27 +202,43 @@ def report_custom_send(update, context):
     if context.user_data[report_custom]:
         try:
             global start_inp, end_inp
-            date_inp = update.message.text.split(',')
+            print("jjj")
+            date_inp = re.split(r'\s*,\s*',update.message.text)
+            print(date_inp)
+            context.bot.send_message(chat_id=update.effective_chat.id,
+                                     text="Готовлю отчет об использовани СУМ за указанный период ⏱", reply_to_message_id=update.message.message_id)
+            # update.message.reply_text(text="Готовлю отчет об использовани СУМ за указанный период ⏱")
             start_inp = date_inp[0]
             end_inp = date_inp[1]
             img, text = take_photo("custom")
-            bio = BytesIO()
-            bio.name = 'image.png'
-            img.save(bio, 'png')
-            bio.seek(0)
-            context.bot.send_photo(chat_id=update.effective_chat.id, photo=bio, caption=text)
+            context.bot.send_photo(chat_id=update.effective_chat.id, photo=img, caption=text)
             sheets_set(date_start_init, date_end_init)
-        except:
+        except Exception as e:
+            print(e)
             try:
                 sheets_set(date_start_init, date_end_init)
-            except:
+            except Exception as e:
+                print(e)
                 pass
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text="Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
         context.user_data[report_custom] = False
 
 dispatcher.add_handler(CommandHandler('report_custom', report_custom))
-dispatcher.add_handler(MessageHandler(Filters.text, report_custom_send))
+dispatcher.add_handler(MessageHandler(Filters.regex("^[0-9\.\,\s]*$"), report_custom_send))
+
+
+
+def help(update, context):
+    command_list = []
+    try:
+        for i in dispatcher.handlers[0]:
+            command_list.append('/'+i.command[0])
+    except Exception:
+        pass
+    text = "Список доступных команд:\n"+"\n".join(command_list)+"\n/help"
+    context.bot.send_message(chat_id = update.effective_chat.id, text = text)
+dispatcher.add_handler(CommandHandler('help', help))
 
 updater.start_polling()
 updater.idle()
