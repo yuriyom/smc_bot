@@ -119,6 +119,7 @@ $RECYCLE.BIN/
 # Selective files by User
 key.py
 service-account-google.json
+subscribers.txt
 .idea/
 __pycache__/
 

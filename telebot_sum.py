@@ -1,10 +1,7 @@
 import datetime
-import time
 from pdf2image import convert_from_bytes
 from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters
-import logging
 from key import token, link
-import pytz
 import requests
 import gspread
 import re
@@ -24,7 +21,6 @@ def creds():
 
 
 def sheets_set(date_start, date_end, granularity = ""):
-    print(date_start,date_end)
     wks = creds()
     global date_start_init, date_end_init
     date_start_init = wks.acell("D6").value
@@ -33,12 +29,10 @@ def sheets_set(date_start, date_end, granularity = ""):
     wks.update("D6", date_start, raw=False)
     wks.update("D7", date_end, raw=False)
     days = (datetime.datetime.strptime(date_end, "%d.%m.%Y").date()-datetime.datetime.strptime(date_start, "%d.%m.%Y").date()).days
-    print(days)
     #установка гранулярности (дни/недели)
     if granularity == "":
         #если в начале функции гранулярность не задана, то преиод более 25 дней будет отражаться по неделям, а менее — по дням
         if days>25:
-            print()
             wks.update("E10", "неделям", raw=False)
         else:
             wks.update("E10", "дням", raw=False)
@@ -96,8 +90,6 @@ def take_photo(mode):
         sheets_set(start_cur, end_cur)
     elif mode == "current_30":
         end_cur = (datetime.date.today())
-        # start_cur = (end_cur - datetime.timedelta(days=30))
-        print(end_cur.day)
         start_cur = end_cur+relativedelta(months=-1)
         end_cur = end_cur.strftime("%d.%m.%Y")
         start_cur = start_cur.strftime("%d.%m.%Y")
@@ -118,31 +110,50 @@ def take_photo(mode):
     return img, text
 
 b = False
-chats = []
+
 def auto_report(update, context):
-    global b, chats
+    global b
     command = context.args[0].lower()
+    with open('subscribers.txt', 'r') as f:
+        sub_list = list(filter(None,f.read().rstrip().split(',')))
     if("on" == command):
         b = True
-        chats.append(update.effective_chat.id)
-        update.message.reply_text("Проверочный отчет будет отправлен в среду в 13:00 ✅")
-        # update.message.reply_text("Теперь отчет будет автоматически отправляться каждый понедельник в 13:00 ✅")
+        # logging.basicConfig('subscribers.txt.txt',)
+            # f.write(','+ str(update.effective_chat.id))
+        if str(update.effective_chat.id) not in sub_list:
+            sub_list.append(update.effective_chat.id)
+            text_sub_id = ','.join(map(str, sub_list))
+            with open('subscribers.txt', 'w') as f:
+                f.write(text_sub_id)
+            update.message.reply_text("Проверочный отчет будет отправлен в среду в 13:00 ✅")
+            # update.message.reply_text("Теперь отчет будет автоматически отправляться каждый понедельник в 13:00 ✅")
+        else:
+            update.message.reply_text("Вы уже подписаны\nНапоминаю, проверочный отчет юудет отправлен в среду в 13:00⏱")
+            # update.message.reply_text("Вы уже подписаны\nНапоминаю, отчет отправляется в понедельник в 13:00⏱")
     elif("off" == command):
         b = False
-        update.message.reply_text("Теперь авто-отчёт отправляться не будет")
         try:
-            chats.remove(update.effective_chat.id)
+            sub_list.remove(str(update.effective_chat.id))
+            text_sub_id = ','.join(map(str,sub_list))
+            print(text_sub_id)
+            with open('subscribers.txt', 'w') as f:
+                f.write(text_sub_id)
+            update.message.reply_text("Теперь авто-отчёт отправляться не будет ⛔️")
         except:
+            update.message.reply_text("Кажется, вы не были подписаны на рассылку")
             pass
 dispatcher.add_handler(CommandHandler('auto_report', auto_report))
 j = updater.job_queue
 
 def planned(context: CallbackContext):
-    global b, chats
-    print(chats)
+    global b
+    with open('subscribers.txt', 'r') as f:
+        sub_list = list(filter(None,f.read().rstrip().split(',')))
     img1, text1 = take_photo("current_14")
     img2, text2 = take_photo("nakop")
-    for id in chats:
+    for id in sub_list:
+        id = int(id)
+        context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ 📊 \n1. За последние 2 недели\n2. За период с 01.08 по текщую дату')
         context.bot.send_photo(chat_id=id, photo=img1, caption=text1)
         context.bot.send_photo(chat_id=id, photo=img2, caption=text2)
     sheets_set(date_start_init, date_end_init)
@@ -153,13 +164,14 @@ job_daily = j.run_daily(planned, days=[2], time=datetime.time(hour=12, minute=59
 def start(update, context):
     message = 'Привет!'
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-    print(update.effective_chat)
 start_handler = CommandHandler('start', start)
 dispatcher.add_handler(start_handler)
 
 def sub_id_list(update, context):
-    if not chats: message = "Пока никто не подписался на рассылку"
-    else: message = ",".join(map(str,chats))
+    with open('subscribers.txt', 'r') as f:
+        sub_list = list(filter(None,f.read().rstrip().split(',')))
+    if not sub_list: message = "Пока никто не подписался на рассылку"
+    else: message = ",".join(map(str,sub_list))
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 dispatcher.add_handler(CommandHandler('sub_id_list', sub_id_list))
 
@@ -202,9 +214,7 @@ def report_custom_send(update, context):
     if context.user_data[report_custom]:
         try:
             global start_inp, end_inp
-            print("jjj")
             date_inp = re.split(r'\s*,\s*',update.message.text)
-            print(date_inp)
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text="Готовлю отчет об использовани СУМ за указанный период ⏱", reply_to_message_id=update.message.message_id)
             # update.message.reply_text(text="Готовлю отчет об использовани СУМ за указанный период ⏱")
