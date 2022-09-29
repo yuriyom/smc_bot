@@ -8,6 +8,8 @@ import re
 from dateutil.relativedelta import *
 import pytz
 from io import BytesIO
+import re
+import pandas as pd
 
 
 updater = Updater(token=token, use_context=True)
@@ -110,71 +112,63 @@ def take_photo(mode):
     text = get_texts()
     return img, text
 
-b = False
-
 def auto_report(update, context):
-    global b
     command = context.args[0].lower()
-    with open('subscribers.txt', 'r') as f:
-        sub_list = list(filter(None,f.read().rstrip().split(',')))
+    df = pd.read_csv('subscribers.txt', names=['id','name'], header=0)
+    id = update.effective_chat.id
     if("on" == command):
-        b = True
-        # logging.basicConfig('subscribers.txt.txt',)
-            # f.write(','+ str(update.effective_chat.id))
-        if str(update.effective_chat.id) not in sub_list:
-            sub_list.append(update.effective_chat.id)
-            text_sub_id = ','.join(map(str, sub_list))
-            with open('subscribers.txt', 'w') as f:
-                f.write(text_sub_id)
-            update.message.reply_text("Проверочный отчет будет отправлен в среду в 13:00 ✅")
-            # update.message.reply_text("Теперь отчет будет автоматически отправляться каждый понедельник в 13:00 ✅")
+        if id not in df['id'].values:
+            if id < 0:
+                name = update.effective_chat.title
+            else:
+                name = update.effective_chat.first_name + ' '+ (update.effective_chat.last_name or '')
+            df.loc[len(df)] = [id,name]
+            df.to_csv('subscribers.txt',index=False)
+            # update.message.reply_text("Проверочный отчет будет отправлен в среду в 13:00 ✅")
+            update.message.reply_text("Теперь отчет будет автоматически отправляться каждый понедельник в 13:00 ✅")
         else:
-            update.message.reply_text("Вы уже подписаны\nНапоминаю, проверочный отчет юудет отправлен в среду в 13:00⏱")
-            # update.message.reply_text("Вы уже подписаны\nНапоминаю, отчет отправляется в понедельник в 13:00⏱")
+            # update.message.reply_text("Вы уже подписаны\nНапоминаю, проверочный отчет будет отправлен в среду в 13:00⏱")
+            update.message.reply_text("Вы уже подписаны\nНапоминаю, отчет отправляется в понедельник в 13:00⏱")
     elif("off" == command):
-        b = False
-        try:
-            sub_list.remove(str(update.effective_chat.id))
-            text_sub_id = ','.join(map(str,sub_list))
-            print(text_sub_id)
-            with open('subscribers.txt', 'w') as f:
-                f.write(text_sub_id)
+        if id in df['id'].values:
+            df = df[df['id']!=id]
+            df.to_csv('subscribers.txt', index=False)
             update.message.reply_text("Теперь авто-отчёт отправляться не будет ⛔️")
-        except:
+        else:
             update.message.reply_text("Кажется, вы не были подписаны на рассылку")
-            pass
 dispatcher.add_handler(CommandHandler('auto_report', auto_report))
 j = updater.job_queue
 
 def planned(context: CallbackContext):
-    global b
-    with open('subscribers.txt', 'r') as f:
-        sub_list = list(filter(None,f.read().rstrip().split(',')))
+    df = pd.read_csv('subscribers.txt', names=['id','name'], header=0)
+    sub_list = df['id']
     img1, text1 = take_photo("current_14")
     img2, text2 = take_photo("nakop")
     for id in sub_list:
-        id = int(id)
         context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ 📊 \n1. За последние 2 недели\n2. За период с 01.08 по текщую дату')
         context.bot.send_photo(chat_id=id, photo=img1, caption=text1)
         context.bot.send_photo(chat_id=id, photo=img2, caption=text2)
     sheets_set(date_start_init, date_end_init)
-job_daily = j.run_daily(planned, days=[2], time=datetime.time(hour=12, minute=59, second=45, tzinfo=pytz.timezone("Europe/Moscow")))
-# job_daily = j.run_repeating(planned, 30)
+job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=12, minute=59, second=45, tzinfo=pytz.timezone("Europe/Moscow")))
+# job_daily = j.run_repeating(planned, 60)
 
 
 def start(update, context):
-    message = 'Привет!'
+    if update.effective_chat.id <0:
+        message = 'Привет всем в чате «'+ update.effective_chat.title+'» 👋'
+    else:
+        message = 'Привет, '+ update.effective_chat.first_name+"!"
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 start_handler = CommandHandler('start', start)
 dispatcher.add_handler(start_handler)
 
-def sub_id_list(update, context):
+def subs_list(update, context):
     with open('subscribers.txt', 'r') as f:
-        sub_list = list(filter(None,f.read().rstrip().split(',')))
-    if not sub_list: message = "Пока никто не подписался на рассылку"
-    else: message = ",".join(map(str,sub_list))
+        message = f.read()
+    if message == '':
+        message = "Пока никто не подписался на рассылку"
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-dispatcher.add_handler(CommandHandler('sub_id_list', sub_id_list))
+dispatcher.add_handler(CommandHandler('subs_list', subs_list))
 
 
 def report_2_weeks(update, context):
@@ -213,12 +207,13 @@ def report_custom(update, context):
 
 def report_custom_send(update, context):
     if context.user_data[report_custom]:
+        pattern = re.compile(r'\s*(\d{1,2})\D(\d{1,2})\D(\d{4})\n*.\s*(\d{1,2})\D(\d{1,2})\D(\d{4})', re.DOTALL)
+        def repl(match):
+            return '{:0>2}.{:0>2}.{:0>4},{:0>2}.{:0>2}.{:0>4}'.format(*match.groups())
         try:
             global start_inp, end_inp
-            date_inp = re.split(r'\s*,\s*',update.message.text)
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                     text="Готовлю отчет об использовани СУМ за указанный период ⏱", reply_to_message_id=update.message.message_id)
-            # update.message.reply_text(text="Готовлю отчет об использовани СУМ за указанный период ⏱")
+            date_inp = pattern.sub(repl, update.message.text).split(',')
+            update.message.reply_text("Готовлю отчет об использовани СУМ за указанный период ⏱")
             start_inp = date_inp[0]
             end_inp = date_inp[1]
             img, text = take_photo("custom")
@@ -236,7 +231,9 @@ def report_custom_send(update, context):
         context.user_data[report_custom] = False
 
 dispatcher.add_handler(CommandHandler('report_custom', report_custom))
-dispatcher.add_handler(MessageHandler(Filters.regex("^[0-9\.\,\s]*$"), report_custom_send))
+# dispatcher.add_handler(MessageHandler(Filters.regex("^\s*(\d{1,2})\D(\d{1,2})\D(\d{4})\n*.\s*(\d{1,2})\D(\d{1,2})\D(\d{4})$"), report_custom_send))
+pattern = re.compile(r'\s*(\d{1,2})\D(\d{1,2})\D(\d{4})\n*.\s*(\d{1,2})\D(\d{1,2})\D(\d{4})', re.DOTALL)
+dispatcher.add_handler(MessageHandler(Filters.regex(pattern), report_custom_send))
 
 
 
