@@ -47,10 +47,10 @@ def get_texts():
     wks = creds()
     date_start = wks.acell("D6").value
     date_end = wks.acell("D7").value
-    v_sc = int(wks.acell("H7").value)
-    v_sum = int(wks.acell("I7").value)
+    v_sc = int(wks.acell("I7").value)
+    v_sum = int(wks.acell("J7").value)
     try:
-        v_sum_zamech = int(wks.acell("J7").value)
+        v_sum_zamech = int(wks.acell("L7").value)
         if v_sc / v_sum < 0.3:
             tag_1 = "🔴"
         elif v_sc / v_sum < 0.6:
@@ -58,20 +58,21 @@ def get_texts():
         else:
             tag_1 = "🟢"
 
-        if v_sc / v_sum > 0.5:
+        if v_sum_zamech / v_sum > 0.5:
             tag_2 = "🔴"
-        elif v_sc / v_sum > 0.2:
+        elif v_sum_zamech / v_sum > 0.2:
             tag_2 = "🟠"
         else:
             tag_2 = "🟢"
         v_sum_all_procent = f"{v_sum / v_sc:.0%}"
         v_sum_zamech_procent = f"{v_sum_zamech / v_sum:.0%}"
-        v_sum_success_procent = f"{(v_sum - v_sum_zamech) / v_sc:.0%}"
+        # v_sum_success_procent = f"{(v_sum - v_sum_zamech) / v_sc:.0%}"
         text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(
             v_sc) + " мероприятий, из них в СУМ — " + str(
             v_sum) + " (" + v_sum_all_procent + ") " + tag_1 + "\n\nИз " + str(
             v_sum) + " мероприятий в СУМ " + str(
-            v_sum_zamech) + " были с замечаниями (" + v_sum_zamech_procent + ") " + tag_2 + "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent)
+            v_sum_zamech) + " были с замечаниями (" + v_sum_zamech_procent + ") " + tag_2)
+                   # "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent
     except:
         text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(v_sc) + " мероприятий, из них в СУМ — " + "0 🔴")
     return (text)
