@@ -48,39 +48,51 @@ def get_texts():
     date_start = wks.acell("D6").value
     date_end = wks.acell("D7").value
     v_sc = int(wks.acell("I7").value)
-    v_sum = int(wks.acell("J7").value)
+    v_sum_possible = int(wks.acell("J7").value)
+    v_sum = int(wks.acell("K7").value)
+    re1 = wks.acell("P19").value
+    re2 = wks.acell("P20").value
+    re3 = wks.acell("P21").value
+    val1 = f'{int(wks.acell("Q19").value)/(v_sc-v_sum):.0%}'
+    val2 = f'{int(wks.acell("Q20").value)/(v_sc-v_sum):.0%}'
+    val3 = f'{int(wks.acell("Q21").value)/(v_sc-v_sum):.0%}'
+    # val1 = f'{wks.acell('Q19').value:.0%}'
+    # val2 = f"{wks.acell('Q20').value:.0%}"
+    # val3 = f"{wks.acell('Q21').value:.0%}"
     try:
-        v_sum_zamech = int(wks.acell("L7").value)
-        if v_sc / v_sum < 0.3:
+    #     v_sum_zamech = int(wks.acell("L7").value)
+        if v_sum / v_sum_possible < 0.3:
             tag_1 = "🔴"
-        elif v_sc / v_sum < 0.6:
+        elif v_sum / v_sum_possible < 0.6:
             tag_1 = "🟠"
         else:
             tag_1 = "🟢"
-
-        if v_sum_zamech / v_sum > 0.5:
-            tag_2 = "🔴"
-        elif v_sum_zamech / v_sum > 0.2:
-            tag_2 = "🟠"
-        else:
-            tag_2 = "🟢"
-        v_sum_all_procent = f"{v_sum / v_sc:.0%}"
-        v_sum_zamech_procent = f"{v_sum_zamech / v_sum:.0%}"
-        # v_sum_success_procent = f"{(v_sum - v_sum_zamech) / v_sc:.0%}"
-        text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(
-            v_sc) + " мероприятий, из них в СУМ — " + str(
-            v_sum) + " (" + v_sum_all_procent + ") " + tag_1 + "\n\nИз " + str(
-            v_sum) + " мероприятий в СУМ " + str(
-            v_sum_zamech) + " были с замечаниями (" + v_sum_zamech_procent + ") " + tag_2)
+        # if v_sum_zamech / v_sum > 0.5:
+        #     tag_2 = "🔴"
+        # elif v_sum_zamech / v_sum > 0.2:
+        #     tag_2 = "🟠"
+        # else:
+        #     tag_2 = "🟢"
+        v_sum_all_procent = f"{v_sum / v_sum_possible:.0%}"
+        text = "С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено: " + str(v_sc) + " мероприятий" + "\n\nВ СУМ проведено: "+str(v_sum)+ " из "+ str(v_sum_possible)+" возможных (" + v_sum_all_procent + ") "+tag_1+"\n\nТоп-3 причины проведения мероприятий без СУМ:\n1. "+re1+": "+val1+"\n2. "+re2+": "+val2+"\n3. "+re3+": "+val3
                    # "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent
+        # v_sum_zamech_procent = f"{v_sum_zamech / v_sum:.0%}"
+        # v_sum_success_procent = f"{(v_sum - v_sum_zamech) / v_sc:.0%}"
+        # text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(
+        #     v_sc) + " мероприятий, из них в СУМ — " + str(
+        #     v_sum) + " (" + v_sum_all_procent + ") " + tag_1 + "\n\nИз " + str(
+        #     v_sum) + " мероприятий в СУМ " + str(
+        #     v_sum_zamech) + " были с замечаниями (" + v_sum_zamech_procent + ") " + tag_2)
+        #            # "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent
     except:
+        print(Exception)
         text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(v_sc) + " мероприятий, из них в СУМ — " + "0 🔴")
     return (text)
 
 def download_as_png():
     response = requests.get(
         link)
-    image = convert_from_bytes(response.content)[1].crop((100, 100, 1630, 1000))
+    image = convert_from_bytes(response.content)[-2].crop((100, 100, 1630, 1000))
     return (image)
 
 def take_photo(mode):
@@ -153,6 +165,7 @@ def planned(context: CallbackContext):
         # context.bot.send_photo(chat_id=id, photo=img2, caption=text2)
     sheets_set(date_start_init, date_end_init)
 job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=18, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+# job_daily = j.run_daily(planned, days=[2], time=datetime.time(hour=17, minute=28, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
 # job_daily = j.run_repeating(planned, 60)
 
 
@@ -175,10 +188,11 @@ dispatcher.add_handler(CommandHandler('subs_list', subs_list))
 
 
 def report_2_weeks(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text = "Готовлю отчет об использовани СУМ за последние 14 дней ⏱")
+    must_delete = context.bot.send_message(chat_id=update.effective_chat.id, text = "Готовлю отчет об использовани СУМ за последние 14 дней ⏱")
     try:
         img, text = take_photo("current_14")
         context.bot.send_photo(chat_id=update.effective_chat.id, photo=img, caption=text)
+        context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=update.message.chat_id)
         sheets_set(date_start_init, date_end_init)
     except:
         try:
@@ -186,13 +200,15 @@ def report_2_weeks(update, context):
         except:
             pass
         context.bot.send_message(chat_id = update.effective_chat.id, text = "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
+        context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=update.message.chat_id)
 dispatcher.add_handler(CommandHandler('report_2_weeks', report_2_weeks))
 
 def report_month(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text = "Готовлю отчет об использовани СУМ за последний месяц ⏱")
+    must_delete = context.bot.send_message(chat_id=update.effective_chat.id, text = "Готовлю отчет об использовани СУМ за последний месяц ⏱")
     try:
         img, text = take_photo("current_30")
         context.bot.send_photo(chat_id=update.effective_chat.id, photo=img, caption=text)
+        context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=update.message.chat_id)
         sheets_set(date_start_init, date_end_init)
     except Exception as e:
         print(e)
@@ -201,10 +217,12 @@ def report_month(update, context):
         except:
             pass
         context.bot.send_message(chat_id = update.effective_chat.id, text = "Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
+        context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=update.message.chat_id)
 dispatcher.add_handler(CommandHandler('report_month', report_month))
 
 def report_custom(update, context):
-    context.bot.send_message(update.effective_chat.id,
+    global must_delete_custom
+    must_delete_custom = context.bot.send_message(update.effective_chat.id,
                              "Введите дату начала и конца периода через запятую в формате:\n_дд.мм.гггг, дд.мм.гггг_",parse_mode='Markdown' )
     context.user_data[report_custom] = True
 
@@ -216,11 +234,13 @@ def report_custom_send(update, context):
         try:
             global start_inp, end_inp
             date_inp = pattern.sub(repl, update.message.text).split(',')
-            update.message.reply_text("Готовлю отчет об использовани СУМ за указанный период ⏱")
+            context.bot.deleteMessage(message_id=must_delete_custom.message_id, chat_id=update.message.chat_id)
+            must_delete = update.message.reply_text("Готовлю отчет об использовани СУМ за указанный период ⏱")
             start_inp = date_inp[0]
             end_inp = date_inp[1]
             img, text = take_photo("custom")
             context.bot.send_photo(chat_id=update.effective_chat.id, photo=img, caption=text)
+            context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=update.message.chat_id)
             sheets_set(date_start_init, date_end_init)
         except Exception as e:
             print(e)
@@ -231,6 +251,7 @@ def report_custom_send(update, context):
                 pass
             context.bot.send_message(chat_id=update.effective_chat.id,
                                      text="Что-то пошло не так...\nПопробуйте еще раз!\nОбратите внимание на формат дат")
+            context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=update.message.chat_id)
         context.user_data[report_custom] = False
 
 dispatcher.add_handler(CommandHandler('report_custom', report_custom))
