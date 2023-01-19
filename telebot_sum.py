@@ -44,21 +44,25 @@ def sheets_set(date_start, date_end, granularity = ""):
     else: wks.update("E10", granularity, raw=False)
 
 def get_texts():
-    wks = creds()
-    date_start = wks.acell("D6").value
-    date_end = wks.acell("D7").value
-    v_sc = int(wks.acell("I7").value)
-    v_sum_possible = int(wks.acell("J7").value)
-    v_sum = int(wks.acell("K7").value)
-    re1 = wks.acell("P19").value
-    re2 = wks.acell("P20").value
-    re3 = wks.acell("P21").value
-    val1 = f'{int(wks.acell("Q19").value)/(v_sc-v_sum):.0%}'
-    val2 = f'{int(wks.acell("Q20").value)/(v_sc-v_sum):.0%}'
-    val3 = f'{int(wks.acell("Q21").value)/(v_sc-v_sum):.0%}'
-    # val1 = f'{wks.acell('Q19').value:.0%}'
-    # val2 = f"{wks.acell('Q20').value:.0%}"
-    # val3 = f"{wks.acell('Q21').value:.0%}"
+    try:
+        wks = creds()
+        date_start = wks.acell("D6").value
+        date_end = wks.acell("D7").value
+        v_sc = int(wks.acell("I7").value)
+        v_sum_possible = int(wks.acell("J7").value)
+        v_sum = int(wks.acell("K7").value)
+        re1 = str(wks.acell("P19").value or '')
+        re2 = str(wks.acell("P20").value or '')
+        re3 = str(wks.acell("P21").value or '')
+        val1 = f'{int(wks.acell("Q19").value or 0)/(v_sc-v_sum):.0%}'.replace("0%", '')
+        val2 = f'{int(wks.acell("Q20").value or 0)/(v_sc-v_sum):.0%}'.replace("0%", '')
+        val3 = f'{int(wks.acell("Q21").value or 0)/(v_sc-v_sum):.0%}'.replace("0%", '')
+        # val1 = f'{wks.acell('Q19').value:.0%}'
+        # val2 = f"{wks.acell('Q20').value:.0%}"
+        # val3 = f"{wks.acell('Q21').value:.0%}"
+    except Exception as e:
+        print(e)
+        pass
     try:
     #     v_sum_zamech = int(wks.acell("L7").value)
         if v_sum / v_sum_possible < 0.3:
@@ -84,8 +88,8 @@ def get_texts():
         #     v_sum) + " мероприятий в СУМ " + str(
         #     v_sum_zamech) + " были с замечаниями (" + v_sum_zamech_procent + ") " + tag_2)
         #            # "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent
-    except:
-        print(Exception)
+    except Exception as e:
+        print(e)
         text = str("С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено " + str(v_sc) + " мероприятий, из них в СУМ — " + "0 🔴")
     return (text)
 
@@ -194,7 +198,8 @@ def report_2_weeks(update, context):
         context.bot.send_photo(chat_id=update.effective_chat.id, photo=img, caption=text)
         context.bot.deleteMessage(message_id=must_delete.message_id, chat_id=update.message.chat_id)
         sheets_set(date_start_init, date_end_init)
-    except:
+    except Exception as e:
+        # print(e)
         try:
             sheets_set(date_start_init, date_end_init)
         except:
@@ -259,88 +264,88 @@ dispatcher.add_handler(CommandHandler('report_custom', report_custom))
 pattern = re.compile(r'\s*(\d{1,2})\D(\d{1,2})\D(\d{4})\n*.\s*(\d{1,2})\D(\d{1,2})\D(\d{4})', re.DOTALL)
 dispatcher.add_handler(MessageHandler(Filters.regex(pattern), report_custom_send))
 
-def get_file(update, context):
-    context.bot.send_message(update.effective_chat.id,
-                             "Пришлите файл Excel или zip-архив с паспортами проектов из Bitrix" )
-    context.user_data[get_file] = True
-def downloader(update, context):
-    if context.user_data[get_file]:
-        try:
-            os.mkdir('temp')
-            bot_path = os.path.split(context.bot.get_file(update.message.document)["file_path"])[1]
-            path = os.path.join('temp',bot_path)
-            with open(path, 'wb') as f:
-                context.bot.get_file(update.message.document).download(out=f)
-                context.bot.send_message(chat_id=update.effective_chat.id,
-                                         text="Файл скачан, подождите ⏱")
-            main_rest = pd.DataFrame()
-            main_po = pd.DataFrame()
-            path_to_save = os.path.split(path)[0]
-            if path.endswith('.xlsx'):
-                files = []
-                files.append(os.path.split(path)[1])
-                path_fin = os.path.split(path)[0]
-            else:
-                shutil.unpack_archive(path, "temp")
-                os.remove(os.path.join("temp", bot_path))
-                path = os.path.join("temp",os.listdir("temp")[0])
-                files = os.listdir(path)
-                path_fin = path
-            for file in files:
-                if file != ".DS_Store":
-                    df = pd.read_excel(os.path.join(path_fin, file), header=None)
-                    df.replace({"\n{1,}": '\n', "\r{1,}": '\n', "\r\n{1,}": '\n', "\t{1,}": ' ', " +": " "}, regex=True,
-                               inplace=True)
-                    df.replace({" {2,}": ' '}, inplace=True)
-                    df.iloc[2][1] = str(df.iloc[2][0]).replace("&quot;", '"')
-                    df = df[df[0] != "Параметр проекта:"]
-                    df.iloc[2][0] = "Организация"
-                    df[1].str.strip()
-                    if (df.iloc[8][1] == "Комитет по развитию общесистемного и прикладного ПО") or (
-                            "Комитет" in df.iloc[8][1] and "ПО" in df.iloc[8][1] and "развит" in df.iloc[8][1]):
-                        flag = 1
-                    else:
-                        flag = 0
-
-                    df = df[1:]
-                    df = df.dropna()
-                    df = df.T
-                    df = df.rename(columns=df.iloc[0])
-                    df = df[1:]
-                    cols = pd.Series(df.columns)
-                    for dup in df.columns[df.columns.duplicated(keep=False)]:
-                        cols[df.columns.get_loc(dup)] = ([dup + '.' + str(d_idx)
-                                                          if d_idx != 0
-                                                          else dup
-                                                          for d_idx in range(df.columns.get_loc(dup).sum())]
-                        )
-                    df.columns = cols
-
-                    if flag == 1:
-                        main_po = pd.concat([main_po, df], axis=0)
-                    else:
-                        main_rest = pd.concat([main_rest, df], axis=0)
-            mark = datetime.datetime.now().strftime("%d-%m-%Y(%H-%M)")
-            save_to = os.path.join(path_to_save, "from_bitrix_" + mark + ".xlsx")
-
-            writer = pd.ExcelWriter(save_to, engine='xlsxwriter')
-            if not main_po.empty:
-                main_po.to_excel(writer, sheet_name='ЦКР', index=False)
-            if not main_rest.empty:
-                main_rest.to_excel(writer, sheet_name="ИЦК", index=False)
-            writer.close()
-            print(save_to)
-            context.bot.send_document(update.effective_chat.id,open(save_to,"rb"))
-
-        except Exception as e:
-            print(e)
-            context.bot.send_message(chat_id=update.effective_chat.id,
-                                     text="❌ Произошла непредвиденная ошибка:\n"+str(e))
-        shutil.rmtree('temp')
-        context.user_data[get_file] = False
-
-dispatcher.add_handler(CommandHandler('turn_bitrix', get_file))
-updater.dispatcher.add_handler(MessageHandler(Filters.document, downloader))
+# def get_file(update, context):
+#     context.bot.send_message(update.effective_chat.id,
+#                              "Пришлите файл Excel или zip-архив с паспортами проектов из Bitrix" )
+#     context.user_data[get_file] = True
+# def downloader(update, context):
+#     if context.user_data[get_file]:
+#         try:
+#             os.mkdir('temp')
+#             bot_path = os.path.split(context.bot.get_file(update.message.document)["file_path"])[1]
+#             path = os.path.join('temp',bot_path)
+#             with open(path, 'wb') as f:
+#                 context.bot.get_file(update.message.document).download(out=f)
+#                 context.bot.send_message(chat_id=update.effective_chat.id,
+#                                          text="Файл скачан, подождите ⏱")
+#             main_rest = pd.DataFrame()
+#             main_po = pd.DataFrame()
+#             path_to_save = os.path.split(path)[0]
+#             if path.endswith('.xlsx'):
+#                 files = []
+#                 files.append(os.path.split(path)[1])
+#                 path_fin = os.path.split(path)[0]
+#             else:
+#                 shutil.unpack_archive(path, "temp")
+#                 os.remove(os.path.join("temp", bot_path))
+#                 path = os.path.join("temp",os.listdir("temp")[0])
+#                 files = os.listdir(path)
+#                 path_fin = path
+#             for file in files:
+#                 if file != ".DS_Store":
+#                     df = pd.read_excel(os.path.join(path_fin, file), header=None)
+#                     df.replace({"\n{1,}": '\n', "\r{1,}": '\n', "\r\n{1,}": '\n', "\t{1,}": ' ', " +": " "}, regex=True,
+#                                inplace=True)
+#                     df.replace({" {2,}": ' '}, inplace=True)
+#                     df.iloc[2][1] = str(df.iloc[2][0]).replace("&quot;", '"')
+#                     df = df[df[0] != "Параметр проекта:"]
+#                     df.iloc[2][0] = "Организация"
+#                     df[1].str.strip()
+#                     if (df.iloc[8][1] == "Комитет по развитию общесистемного и прикладного ПО") or (
+#                             "Комитет" in df.iloc[8][1] and "ПО" in df.iloc[8][1] and "развит" in df.iloc[8][1]):
+#                         flag = 1
+#                     else:
+#                         flag = 0
+#
+#                     df = df[1:]
+#                     df = df.dropna()
+#                     df = df.T
+#                     df = df.rename(columns=df.iloc[0])
+#                     df = df[1:]
+#                     cols = pd.Series(df.columns)
+#                     for dup in df.columns[df.columns.duplicated(keep=False)]:
+#                         cols[df.columns.get_loc(dup)] = ([dup + '.' + str(d_idx)
+#                                                           if d_idx != 0
+#                                                           else dup
+#                                                           for d_idx in range(df.columns.get_loc(dup).sum())]
+#                         )
+#                     df.columns = cols
+#
+#                     if flag == 1:
+#                         main_po = pd.concat([main_po, df], axis=0)
+#                     else:
+#                         main_rest = pd.concat([main_rest, df], axis=0)
+#             mark = datetime.datetime.now().strftime("%d-%m-%Y(%H-%M)")
+#             save_to = os.path.join(path_to_save, "from_bitrix_" + mark + ".xlsx")
+#
+#             writer = pd.ExcelWriter(save_to, engine='xlsxwriter')
+#             if not main_po.empty:
+#                 main_po.to_excel(writer, sheet_name='ЦКР', index=False)
+#             if not main_rest.empty:
+#                 main_rest.to_excel(writer, sheet_name="ИЦК", index=False)
+#             writer.close()
+#             print(save_to)
+#             context.bot.send_document(update.effective_chat.id,open(save_to,"rb"))
+#
+#         except Exception as e:
+#             print(e)
+#             context.bot.send_message(chat_id=update.effective_chat.id,
+#                                      text="❌ Произошла непредвиденная ошибка:\n"+str(e))
+#         shutil.rmtree('temp')
+#         context.user_data[get_file] = False
+#
+# dispatcher.add_handler(CommandHandler('turn_bitrix', get_file))
+# updater.dispatcher.add_handler(MessageHandler(Filters.document, downloader))
 
 def help(update, context):
     command_list = []
