@@ -58,7 +58,7 @@ def get_texts():
         val2 = f'{int(wks.acell("Q20").value or 0)/(v_sc-v_sum):.0%}'.replace("0%", '')
         val3 = f'{int(wks.acell("Q21").value or 0)/(v_sc-v_sum):.0%}'.replace("0%", '')
         # val1 = f'{wks.acell('Q19').value:.0%}'
-        # val2 = f"{wks.acell('Q20').value:.0%}"
+        # val2 = f"{wks.acell('Q20').value:.0%}"ъ
         # val3 = f"{wks.acell('Q21').value:.0%}"
     except Exception as e:
         print(e)
@@ -163,13 +163,16 @@ def planned(context: CallbackContext):
     img1, text1 = take_photo("current_14")
     # img2, text2 = take_photo("nakop")
     for id in sub_list:
-        # context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ 📊 \n1. За последние 2 недели\n2. За период с 01.08 по текщую дату')
-        context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ за последние две недели 📊')
-        context.bot.send_photo(chat_id=id, photo=img1, caption=text1)
+        try:
+            # context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ 📊 \n1. За последние 2 недели\n2. За период с 01.08 по текщую дату')
+            context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ за последние две недели 📊')
+            context.bot.send_photo(chat_id=id, photo=img1, caption=text1)
+        except:
+            continue
         # context.bot.send_photo(chat_id=id, photo=img2, caption=text2)
     sheets_set(date_start_init, date_end_init)
-job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=18, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
-# job_daily = j.run_daily(planned, days=[2], time=datetime.time(hour=17, minute=28, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=00, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+# job_daily = j.run_daily(planned, days=[1], time=datetime.time(hour=16, minute=39, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
 # job_daily = j.run_repeating(planned, 60)
 
 
