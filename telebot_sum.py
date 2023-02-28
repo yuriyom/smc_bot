@@ -54,9 +54,12 @@ def get_texts():
         re1 = str(wks.acell("P19").value or '')
         re2 = str(wks.acell("P20").value or '')
         re3 = str(wks.acell("P21").value or '')
-        val1 = f'{int(wks.acell("Q19").value or 0)/(v_sc-v_sum):.0%}'.replace("0%", '')
-        val2 = f'{int(wks.acell("Q20").value or 0)/(v_sc-v_sum):.0%}'.replace("0%", '')
-        val3 = f'{int(wks.acell("Q21").value or 0)/(v_sc-v_sum):.0%}'.replace("0%", '')
+        # val1 = f'{int(wks.acell("Q19").value or 0):.0%}'
+        # val2 = f'{int(wks.acell("Q20").value or 0):.0%}'
+        # val3 = f'{int(wks.acell("Q21").value or 0):.0%}'
+        val1 = wks.acell("Q19").value or 0
+        val2 = wks.acell("Q20").value or 0
+        val3 = wks.acell("Q21").value or 0
         # val1 = f'{wks.acell('Q19').value:.0%}'
         # val2 = f"{wks.acell('Q20').value:.0%}"ъ
         # val3 = f"{wks.acell('Q21').value:.0%}"
