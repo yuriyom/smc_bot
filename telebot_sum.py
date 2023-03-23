@@ -112,6 +112,12 @@ def take_photo(mode):
         end_cur = end_cur.strftime("%d.%m.%Y")
         start_cur = start_cur.strftime("%d.%m.%Y")
         sheets_set(start_cur, end_cur)
+    elif mode == "current_7":
+        end_cur = (datetime.date.today())
+        start_cur = (end_cur - datetime.timedelta(days=7))
+        end_cur = end_cur.strftime("%d.%m.%Y")
+        start_cur = start_cur.strftime("%d.%m.%Y")
+        sheets_set(start_cur, end_cur)
     elif mode == "current_30":
         end_cur = (datetime.date.today())
         start_cur = end_cur+relativedelta(months=-1)
@@ -163,19 +169,19 @@ j = updater.job_queue
 def planned(context: CallbackContext):
     df = pd.read_csv('subscribers.txt', names=['id','name'], header=0)
     sub_list = df['id']
-    img1, text1 = take_photo("current_14")
+    img1, text1 = take_photo("current_7")
     # img2, text2 = take_photo("nakop")
     for id in sub_list:
         try:
             # context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ 📊 \n1. За последние 2 недели\n2. За период с 01.08 по текщую дату')
-            context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ за последние две недели 📊')
+            context.bot.send_message(chat_id=id, text = 'Подготовлен еженедельный отчет об использовании СУМ за последнюю неделю 📊')
             context.bot.send_photo(chat_id=id, photo=img1, caption=text1)
         except:
             continue
         # context.bot.send_photo(chat_id=id, photo=img2, caption=text2)
     sheets_set(date_start_init, date_end_init)
-job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=00, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
-# job_daily = j.run_daily(planned, days=[1], time=datetime.time(hour=16, minute=39, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+# job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=00, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+job_daily = j.run_daily(planned, days=[3], time=datetime.time(hour=9, minute=39, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
 # job_daily = j.run_repeating(planned, 60)
 
 
