@@ -180,8 +180,8 @@ def planned(context: CallbackContext):
             continue
         # context.bot.send_photo(chat_id=id, photo=img2, caption=text2)
     sheets_set(date_start_init, date_end_init)
-# job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=00, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
-job_daily = j.run_daily(planned, days=[3], time=datetime.time(hour=9, minute=39, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+job_daily = j.run_daily(planned, days=[0], time=datetime.time(hour=13, minute=00, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
+# job_daily = j.run_daily(planned, days=[3], time=datetime.time(hour=9, minute=39, second=00, tzinfo=pytz.timezone("Europe/Moscow")))
 # job_daily = j.run_repeating(planned, 60)
 
 
