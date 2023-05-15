@@ -57,9 +57,9 @@ def get_texts():
         # val1 = f'{int(wks.acell("Q19").value or 0):.0%}'
         # val2 = f'{int(wks.acell("Q20").value or 0):.0%}'
         # val3 = f'{int(wks.acell("Q21").value or 0):.0%}'
-        val1 = wks.acell("Q19").value or 0
-        val2 = wks.acell("Q20").value or 0
-        val3 = wks.acell("Q21").value or 0
+        val1 = str(wks.acell("Q19").value or 0)
+        val2 = str(wks.acell("Q20").value or 0)
+        val3 = str(wks.acell("Q21").value or 0)
         # val1 = f'{wks.acell('Q19').value:.0%}'
         # val2 = f"{wks.acell('Q20').value:.0%}"ъ
         # val3 = f"{wks.acell('Q21').value:.0%}"
@@ -81,7 +81,7 @@ def get_texts():
         # else:
         #     tag_2 = "🟢"
         v_sum_all_procent = f"{v_sum / v_sum_possible:.0%}"
-        text = "С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено: " + str(v_sc) + " мероприятий" + "\n\nВ СУМ проведено: "+str(v_sum)+ " из "+ str(v_sum_possible)+" возможных (" + v_sum_all_procent + ") "+tag_1+"\n\nТоп-3 причины проведения мероприятий без СУМ:\n1. "+re1+": "+val1+"\n2. "+re2+": "+val2+"\n3. "+re3+": "+val3
+        text = "С " + date_start + " по " + date_end + ":\n\nВсего в СЦ проведено: " + str(v_sc) + " мероприятий" + "\n\nВ СУМ проведено: "+str(v_sum)+ " из "+ str(v_sum_possible)+" возможных (" + str(v_sum_all_procent) + ") "+tag_1+"\n\nТоп-3 причины проведения мероприятий без СУМ:\n1. "+re1+": "+val1+"\n2. "+re2+": "+val2+"\n3. "+re3+": "+val3
                    # "\n\nИтого успешных мероприятий с использованием СУМ: " + v_sum_success_procent
         # v_sum_zamech_procent = f"{v_sum_zamech / v_sum:.0%}"
         # v_sum_success_procent = f"{(v_sum - v_sum_zamech) / v_sc:.0%}"
